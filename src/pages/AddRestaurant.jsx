@@ -4,6 +4,44 @@ import { createRestaurant, uploadPhoto, addPhotoToRestaurant } from '../services
 import PhotoUploader from '../components/PhotoUploader'
 import { useAuth } from '../contexts/AuthContext'
 
+const FOOD_TYPES = [
+  'Colombiana',
+  'Mexicana',
+  'Peruana',
+  'Argentina',
+  'Venezolana',
+  'Brasilera',
+  'Italiana',
+  'Pizza',
+  'Española',
+  'Francesa',
+  'Mediterránea',
+  'Sushi / Japonesa',
+  'China',
+  'Tailandesa',
+  'Coreana',
+  'India',
+  'Vietnamita',
+  'BBQ / Parrilla',
+  'Hamburguesas',
+  'Pollo',
+  'Alitas',
+  'Mariscos',
+  'Ceviches',
+  'Desayunos / Brunch',
+  'Cafetería',
+  'Panadería',
+  'Postres',
+  'Heladería',
+  'Vegetariana / Vegana',
+  'Saludable',
+  'Fusión',
+  'Árabe / Mediterránea',
+  'Internacional',
+  'Comida rápida',
+  'Otro'
+]
+
 export default function AddRestaurant() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -35,7 +73,6 @@ export default function AddRestaurant() {
         createdByName: user.name
       })
 
-      // Subir fotos
       for (const p of photos) {
         if (p.file) {
           const uploaded = await uploadPhoto(id, p.file)
@@ -76,7 +113,12 @@ export default function AddRestaurant() {
 
       <div className="field">
         <label>Tipo de comida</label>
-        <input value={form.foodType} onChange={e => update('foodType', e.target.value)} placeholder="Ej: Mariscos, Italiana, BBQ" />
+        <select value={form.foodType} onChange={e => update('foodType', e.target.value)}>
+          <option value="">Selecciona un tipo...</option>
+          {FOOD_TYPES.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
       </div>
 
       <div className="field">
