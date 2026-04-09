@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut
+} from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { auth, googleProvider, db } from '../firebase'
 
@@ -10,26 +16,40 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Manejar el resultado del redirect al volver de Google
+    getRedirectResult(auth).catch((err) => {
+      console.error('Redirect error:', err)
+    })
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Crear/actualizar perfil
-        const userRef = doc(db, 'users', firebaseUser.uid)
-        const snap = await getDoc(userRef)
-        if (!snap.exists()) {
-          await setDoc(userRef, {
+        try {
+          const userRef = doc(db, 'users', firebaseUser.uid)
+          const snap = await getDoc(userRef)
+          if (!snap.exists()) {
+            await setDoc(userRef, {
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || 'Usuario',
+              email: firebaseUser.email,
+              photoURL: firebaseUser.photoURL || '',
+              createdAt: new Date().toISOString()
+            })
+          }
+          setUser({
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || 'Usuario',
             email: firebaseUser.email,
-            photoURL: firebaseUser.photoURL || '',
-            createdAt: new Date().toISOString()
+            photoURL: firebaseUser.photoURL || ''
+          })
+        } catch (err) {
+          console.error('Error cargando perfil:', err)
+          setUser({
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Usuario',
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL || ''
           })
         }
-        setUser({
-          uid: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Usuario',
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL || ''
-        })
       } else {
         setUser(null)
       }
@@ -40,10 +60,21 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async () => {
     try {
+      // Intentar primero con popup (funciona en desktop)
       await signInWithPopup(auth, googleProvider)
     } catch (err) {
-      console.error(err)
-      alert('Error al iniciar sesión: ' + err.message)
+      console.warn('Popup falló, usando redirect:', err.code)
+      // Si el popup falla (móvil, COOP, etc.), usar redirect como respaldo
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        await signInWithRedirect(auth, googleProvider)
+      } else {
+        alert('Error al iniciar sesión: ' + err.message)
+      }
     }
   }
 
