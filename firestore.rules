@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Solo usuarios autenticados (cualquier usuario logueado del grupo)
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && request.auth.uid == userId;
+    }
+
+    match /restaurants/{id} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAuth();
+    }
+
+    match /wishlists/{userId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+    }
+  }
+}
